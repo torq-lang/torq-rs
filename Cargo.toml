@@ -1,0 +1,8 @@
+[package]
+name = "torq_lang"
+version = "0.1.0"
+edition = "2021"
+description = "A programming language for concurrent dataflow."
+license = "Apache-2.0 + Commons Clause (Source Available)"
+
+[dependencies]
