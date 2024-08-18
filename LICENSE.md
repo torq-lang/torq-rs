@@ -1,8 +1,8 @@
-# Torqlang License v1.0
+# Torq Lang License v1.0
 
 Copyright (c) 2024 Torqware LLC. All rights reserved.
 
-The Torqlang License is a "source available" license comprised, as defined below, of the Apache License Version 2.0 and the "Commons Clause" License Condition v1.0.
+The Torq Lang License is a "source available" license comprised, as defined below, of the Apache License Version 2.0 and the "Commons Clause" License Condition v1.0.
 
 ## "Commons Clause" License Condition v1.0
 
@@ -22,7 +22,7 @@ whose value derives, entirely or substantially, from the functionality of the
 Software. Any license notice or attribution required by the License must also
 include this Commons Clause License Condition notice.
 
-Software: Torqlang
+Software: Torq Lang
 
 License: Apache License Version 2.0
 
