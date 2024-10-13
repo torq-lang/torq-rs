@@ -5,6 +5,4 @@
  * If not, see http://torq-lang.github.io/licensing/torq-lang-license-v1_0.
  */
 
-fn main() {
-    println!("Hello, world!");
-}
+pub mod lexer;

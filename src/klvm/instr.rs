@@ -5,6 +5,16 @@
  * If not, see http://torq-lang.github.io/licensing/torq-lang-license-v1_0.
  */
 
-fn main() {
-    println!("Hello, world!");
+trait Instr {
+    fn compute();
+}
+
+struct AddInt32Ident<'a> {
+    left: i32,
+    right: &'a str,
+    target: &'a str,
+}
+
+impl<'a> AddInt32Ident<'a> {
+    fn compute() {}
 }
