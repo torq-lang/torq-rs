@@ -12,53 +12,70 @@
 
 use std::str::Chars;
 
-/// Character position is the UTF-8 character index and not the byte index. Because UTF-8
-/// character encodings vary between 1 and 4 bytes, character positions in a source string are not
-/// deterministic.
-#[derive(Debug, PartialEq)]
-pub struct Token<'a> {
-    pub value: &'a str,
-    pub byte_index: i32,
-    pub token_type: TokenType,
-}
+#[cfg(test)]
+mod tests;
 
-const EOF_TOKEN: Token = Token {
-    value: "EOF",
-    byte_index: -1,
-    token_type: TokenType::Eof,
-};
+// ERROR MESSAGES
+const COMMENT_IS_MISSING_CLOSING_SEQUENCE: &str = "Comment is missing closing sequence '*/'";
+const FLOATING_POINT_SUFFIX_MUST_BE_ONE_OF: &str = "Floating point suffix must be one of [fFdDmM]";
+const IDENT_IS_MISSING_CLOSING_BACKTICK: &str = "Identifier is missing closing backtick";
+const INTEGER_SUFFIX_MUST_BE_ONE_OF: &str = "Integer suffix must be one of [lLmM]";
+const INVALID_DECIMAL_NUMBER: &str = "Invalid decimal number";
+const INVALID_FLOATING_POINT_NUMBER: &str = "Invalid floating point number";
+const INVALID_HEXADECIMAL_NUMBER: &str = "Invalid hexadecimal number";
+const INVALID_INTEGER_NUMBER: &str = "Invalid integer";
+const STR_IS_MISSING_CLOSING_DOUBLE_QUOTE: &str = "String is missing closing double quote";
+const STR_IS_MISSING_CLOSING_SINGLE_QUOTE: &str = "String is missing closing single quote";
+const UNRECOGNIZED_TOKEN: &str = "Unrecognized token";
 
-#[derive(Debug, PartialEq)]
-pub enum TokenType {
-    Char,
-    Comment,
-    Dec,
-    Eof,
-    Flt,
-    Ident,
-    Int,
-    Keyword,
-    OneCharSym,
-    Str,
-    ThreeCharSym,
-    TwoCharSym,
-    Unknown,
-}
+// KEYWORDS
+// Length = 2 (four words total)
+const DO_VALUE: &str = "do";
+const IF_VALUE: &str = "if";
+const IN_VALUE: &str = "in";
+const OF_VALUE: &str = "of";
+// Length = 3 (six words total)
+const ACT_VALUE: &str = "act";
+const END_VALUE: &str = "end";
+const EOF_VALUE: &str = "eof";
+const FOR_VALUE: &str = "for";
+const TRY_VALUE: &str = "try";
+const VAR_VALUE: &str = "var";
+// Length = 4 (ten words total)
+const CASE_VALUE: &str = "case";
+const ELSE_VALUE: &str = "else";
+const FUNC_VALUE: &str = "func";
+const NULL_VALUE: &str = "null";
+const PROC_VALUE: &str = "proc";
+const SELF_VALUE: &str = "self";
+const SKIP_VALUE: &str = "skip";
+const THEN_VALUE: &str = "then";
+const TRUE_VALUE: &str = "true";
+const WHEN_VALUE: &str = "when";
+// Length = 5 (nine words total)
+const ACTOR_VALUE: &str = "actor";
+const BEGIN_VALUE: &str = "begin";
+const BREAK_VALUE: &str = "break";
+const CATCH_VALUE: &str = "catch";
+const FALSE_VALUE: &str = "false";
+const LOCAL_VALUE: &str = "local";
+const SPAWN_VALUE: &str = "spawn";
+const THROW_VALUE: &str = "throw";
+const WHILE_VALUE: &str = "while";
+// Length = 6 (three words total)
+const ELSEIF_VALUE: &str = "elseif";
+const IMPORT_VALUE: &str = "import";
+const RETURN_VALUE: &str = "return";
+// Length = 7
+const FINALLY_VALUE: &str = "finally";
+// Length = 8
+const CONTINUE_VALUE: &str = "continue";
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct LexerIndex {
-    char: char,
-    char_index: i32,
-    byte_index: i32,
-}
-
-struct LexerIter<'a> {
-    source: &'a str,
-    str_iter: Chars<'a>,
-    current: Option<LexerIndex>,
-    current_plus_1: Option<LexerIndex>,
-    current_plus_2: Option<LexerIndex>,
-}
+// WEAK KEYWORDS
+const AS_VALUE: &str = "as";
+const ASK_VALUE: &str = "ask";
+const HANDLE_VALUE: &str = "handle";
+const TELL_VALUE: &str = "tell";
 
 // There are 27 delimiting chars that are the first char for one, two, or three char symbols.
 // The following string slice is 27 bytes sorted.
@@ -104,13 +121,51 @@ const TWO_CHAR_SYMBOLS: [[u8; 2]; 27] = [
     [b' ', b' '], // 26: not used
 ];
 
-const COMMENT_IS_MISSING_CLOSING_SEQUENCE: &str = "Comment is missing closing sequence '*/'";
-const FLOATING_POINT_SUFFIX_MUST_BE_ONE_OF: &str = "Floating point suffix must be one of [fFdDmM]";
-const INTEGER_SUFFIX_MUST_BE_ONE_OF: &str = "Integer suffix must be one of [lLmM]";
-const INVALID_DECIMAL_NUMBER: &str = "Invalid decimal number";
-const INVALID_FLOATING_POINT_NUMBER: &str = "Invalid floating point number";
-const INVALID_HEXADECIMAL_NUMBER: &str = "Invalid hexadecimal number";
-const INVALID_INTEGER_NUMBER: &str = "Invalid integer";
+const EOF_TOKEN: Token = Token {
+    value: "EOF",
+    byte_index: -1,
+    token_type: TokenType::Eof,
+};
+
+/// Character position is the UTF-8 character index and not the byte index. Because UTF-8
+/// character encodings vary between 1 and 4 bytes, character positions in a source string are not
+/// deterministic.
+#[derive(Debug, PartialEq)]
+pub struct Token<'a> {
+    pub value: &'a str,
+    pub byte_index: i32,
+    pub token_type: TokenType,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TokenType {
+    Char,
+    Comment,
+    Dec,
+    Eof,
+    Flt,
+    Ident,
+    Int,
+    Keyword,
+    OneCharSym,
+    Str,
+    ThreeCharSym,
+    TwoCharSym,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct LexerIndex {
+    char: char,
+    char_index: i32,
+    byte_index: i32,
+}
+
+pub struct LexerIter<'a> {
+    source: &'a str,
+    str_iter: Chars<'a>,
+    current: Option<LexerIndex>,
+    current_plus_1: Option<LexerIndex>,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct LexerError {
@@ -194,13 +249,6 @@ impl<'a> LexerIter<'a> {
         -1
     }
 
-    fn is_block_comment_content(index1: Option<LexerIndex>, index2: Option<LexerIndex>,) -> bool {
-        if index1.is_none() || index2.is_none() {
-            return false;
-        }
-        index1.unwrap().char != '*' || index2.unwrap().char != '/'
-    }
-
     fn is_delimiter(c: char) -> bool {
         Self::index_of_delimiter(c) > -1
     }
@@ -209,19 +257,249 @@ impl<'a> LexerIter<'a> {
         c >= '0' && c <= '9'
     }
 
+    fn is_keyword(&self, start: usize, stop: usize) -> bool {
+        //  There are 34 total keywords
+        let length = stop - start + 1;
+        if length == 4 {
+            // There are 10 keywords of 4 chars
+            self.is_keyword_of_4_chars(start, stop)
+        } else if length == 5 {
+            // There are 9 keywords of 5 chars
+            self.is_keyword_of_5_chars(start, stop)
+        } else if length == 3 {
+            // There are 6 keywords of 3 chars
+            self.is_keyword_of_3_chars(start, stop)
+        } else if length == 2 {
+            // There are 4 keywords of 2 chars
+            self.is_keyword_of_2_chars(start, stop)
+        } else if length == 6 {
+            // There are 3 keywords of 6 chars
+            self.is_keyword_of_6_chars(start, stop)
+        } else if length == 7 {
+            // There is 1 keyword of 7 chars
+            self.is_keyword_of_7_chars(start, stop)
+        } else if length == 8 {
+            // There is 1 keyword of 8 chars
+            self.is_keyword_of_8_chars(start, stop)
+        } else {
+            false
+        }
+    }
+
+    fn is_keyword_of_2_chars(&self, start: usize, stop: usize) -> bool {
+        let bytes = self.source.as_bytes();
+        let b1 = bytes[start];
+        if b1 == b'i' {
+            let b2 = bytes[stop];
+            b2 == b'n' || b2 == b'f'
+        } else {
+            if b1 == b'd' {
+                bytes[stop] == b'o'
+            } else if b1 == b'o' {
+                bytes[stop] == b'f'
+            } else {
+                false
+            }
+        }
+    }
+
+    fn is_keyword_of_3_chars(&self, start: usize, stop: usize) -> bool {
+        let bytes = self.source.as_bytes();
+        let b1 = bytes[start];
+        if b1 == b'v' {
+            bytes[start + 1] == b'a' && bytes[stop] == b'r'
+        } else if b1 == b'e' {
+            let b2 = bytes[start + 1];
+            if b2 == b'n' {
+                bytes[stop] == b'd'
+            } else if b2 == b'o' {
+                bytes[stop] == b'f'
+            } else {
+                false
+            }
+        } else if b1 == b'f' {
+            bytes[start + 1] == b'o' && bytes[stop] == b'r'
+        } else if b1 == b't' {
+            bytes[start + 1] == b'r' && bytes[stop] == b'y'
+        } else if b1 == b'a' {
+            bytes[start + 1] == b'c' && bytes[stop] == b't'
+        } else {
+            false
+        }
+    }
+
+    fn is_keyword_of_4_chars(&self, start: usize, stop: usize) -> bool {
+        let bytes = self.source.as_bytes();
+        let b1 = bytes[start];
+        if b1 < b'p' {
+            // case, else, func, or null
+            if b1 == b'c' {
+                bytes[start + 1] == b'a' && bytes[start + 2] == b's' && bytes[stop] == b'e'
+            } else if b1 == b'e' {
+                bytes[start + 1] == b'l' && bytes[start + 2] == b's' && bytes[stop] == b'e'
+            } else if b1 == b'f' {
+                bytes[start + 1] == b'u' && bytes[start + 2] == b'n' && bytes[stop] == b'c'
+            } else if b1 == b'n' {
+                bytes[start + 1] == b'u' && bytes[start + 2] == b'l' && bytes[stop] == b'l'
+            } else {
+                false
+            }
+        } else {
+            // proc, self, skip, then, true, or when
+            if b1 == b'p' {
+                bytes[start + 1] == b'r' && bytes[start + 2] == b'o' && bytes[stop] == b'c'
+            } else if b1 == b's' {
+                let b2 = bytes[start + 1];
+                if b2 == b'e' {
+                    bytes[start + 2] == b'l' && bytes[stop] == b'f'
+                } else if b2 == b'k' {
+                    bytes[start + 2] == b'i' && bytes[stop] == b'p'
+                } else {
+                    false
+                }
+            } else if b1 == b't' {
+                let b2 = bytes[start + 1];
+                if b2 == b'h' {
+                    bytes[start + 2] == b'e' && bytes[stop] == b'n'
+                } else if b2 == b'r' {
+                    bytes[start + 2] == b'u' && bytes[stop] == b'e'
+                } else {
+                    false
+                }
+            } else if b1 == b'w' {
+                bytes[start + 1] == b'h' && bytes[start + 2] == b'e' && bytes[stop] == b'n'
+            } else {
+                false
+            }
+        }
+    }
+
+    fn is_keyword_of_5_chars(&self, start: usize, stop: usize) -> bool {
+        let bytes = self.source.as_bytes();
+        let b1 = bytes[start];
+        if b1 < b'l' {
+            // actor, begin, break, catch, false,
+            if b1 == b'a' {
+                bytes[start + 1] == b'c'
+                    && bytes[start + 2] == b't'
+                    && bytes[start + 3] == b'o'
+                    && bytes[stop] == b'r'
+            } else if b1 == b'b' {
+                let b2 = bytes[start + 1];
+                if b2 == b'e' {
+                    bytes[start + 2] == b'g' && bytes[start + 3] == b'i' && bytes[stop] == b'n'
+                } else if b2 == b'r' {
+                    bytes[start + 2] == b'e' && bytes[start + 3] == b'a' && bytes[stop] == b'k'
+                } else {
+                    false
+                }
+            } else if b1 == b'c' {
+                bytes[start + 1] == b'a'
+                    && bytes[start + 2] == b't'
+                    && bytes[start + 3] == b'c'
+                    && bytes[stop] == b'h'
+            } else if b1 == b'f' {
+                bytes[start + 1] == b'a'
+                    && bytes[start + 2] == b'l'
+                    && bytes[start + 3] == b's'
+                    && bytes[stop] == b'e'
+            } else {
+                false
+            }
+        } else {
+            // local, spawn, throw, while
+            if b1 == b'l' {
+                bytes[start + 1] == b'o'
+                    && bytes[start + 2] == b'c'
+                    && bytes[start + 3] == b'a'
+                    && bytes[stop] == b'l'
+            } else if b1 == b's' {
+                bytes[start + 1] == b'p'
+                    && bytes[start + 2] == b'a'
+                    && bytes[start + 3] == b'w'
+                    && bytes[stop] == b'n'
+            } else if b1 == b't' {
+                bytes[start + 1] == b'h'
+                    && bytes[start + 2] == b'r'
+                    && bytes[start + 3] == b'o'
+                    && bytes[stop] == b'w'
+            } else if b1 == b'w' {
+                bytes[start + 1] == b'h'
+                    && bytes[start + 2] == b'i'
+                    && bytes[start + 3] == b'l'
+                    && bytes[stop] == b'e'
+            } else {
+                false
+            }
+        }
+    }
+
+    fn is_keyword_of_6_chars(&self, start: usize, stop: usize) -> bool {
+        // elseif, import, and return
+        let bytes = self.source.as_bytes();
+        let b1 = bytes[start];
+        if b1 == b'e' {
+            bytes[start + 1] == b'l'
+                && bytes[start + 2] == b's'
+                && bytes[start + 3] == b'e'
+                && bytes[start + 4] == b'i'
+                && bytes[stop] == b'f'
+        } else if b1 == b'i' {
+            bytes[start + 1] == b'm'
+                && bytes[start + 2] == b'p'
+                && bytes[start + 3] == b'o'
+                && bytes[start + 4] == b'r'
+                && bytes[stop] == b't'
+        } else if b1 == b'r' {
+            bytes[start + 1] == b'e'
+                && bytes[start + 2] == b't'
+                && bytes[start + 3] == b'u'
+                && bytes[start + 4] == b'r'
+                && bytes[stop] == b'n'
+        } else {
+            false
+        }
+    }
+
+    fn is_keyword_of_7_chars(&self, start: usize, stop: usize) -> bool {
+        // finally
+        let bytes = self.source.as_bytes();
+        let b1 = bytes[start];
+        if b1 == b'f' {
+            bytes[start + 1] == b'i'
+                && bytes[start + 2] == b'n'
+                && bytes[start + 3] == b'a'
+                && bytes[start + 4] == b'l'
+                && bytes[start + 5] == b'l'
+                && bytes[stop] == b'y'
+        } else {
+            false
+        }
+    }
+
+    fn is_keyword_of_8_chars(&self, start: usize, stop: usize) -> bool {
+        // continue
+        let bytes = self.source.as_bytes();
+        let b1 = bytes[start];
+        if b1 == b'c' {
+            bytes[start + 1] == b'o'
+                && bytes[start + 2] == b'n'
+                && bytes[start + 3] == b't'
+                && bytes[start + 4] == b'i'
+                && bytes[start + 5] == b'n'
+                && bytes[start + 6] == b'u'
+                && bytes[stop] == b'e'
+        } else {
+            false
+        }
+    }
+
+    fn is_keyword_or_ident_char(c: char) -> bool {
+        c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_'
+    }
+
     fn is_eof_or_separator(index: Option<LexerIndex>) -> bool {
         index.is_none() || Self::is_separator(index.unwrap().char)
-    }
-
-    fn is_hex_digit(c: char) -> bool {
-        c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
-    }
-
-    fn is_line_comment_content(index: Option<LexerIndex>) -> bool {
-        if index.is_none() {
-            return false;
-        }
-        index.unwrap().char != '\n'
     }
 
     fn is_separator(c: char) -> bool {
@@ -271,11 +549,7 @@ impl<'a> LexerIter<'a> {
         c == '\u{2028}' || c == '\u{2029}'
     }
 
-    fn make_invalid_number_err(
-        &self,
-        start: LexerIndex,
-        token_type: TokenType,
-    ) -> LexerError {
+    fn make_invalid_number_err(&self, start: LexerIndex, token_type: TokenType) -> LexerError {
         let m = if token_type == TokenType::Int {
             INVALID_INTEGER_NUMBER
         } else {
@@ -287,12 +561,7 @@ impl<'a> LexerIter<'a> {
         }
     }
 
-    fn make_token(
-        &self,
-        start: LexerIndex,
-        stop: LexerIndex,
-        token_type: TokenType,
-    ) -> Token<'a> {
+    fn make_token(&self, start: LexerIndex, stop: LexerIndex, token_type: TokenType) -> Token<'a> {
         let token_start = start.byte_index as usize;
         let token_stop = stop.byte_index as usize + 1;
         Token {
@@ -310,7 +579,6 @@ impl<'a> LexerIter<'a> {
             str_iter,
             current,
             current_plus_1: None,
-            current_plus_2: None,
         }
     }
 
@@ -354,18 +622,20 @@ impl<'a> LexerIter<'a> {
             return self.parse_symbol(index as usize);
         }
         // Otherwise, we are parsing a keyword or identifier
-        self.parse_keyword_or_ident()
+        if Self::is_keyword_or_ident_char(current.char) {
+            self.parse_keyword_or_ident()
+        } else {
+            Err(LexerError {
+                message: UNRECOGNIZED_TOKEN,
+                index: current,
+            })
+        }
     }
 
     fn next_char(&mut self) {
         if self.current_plus_1.is_some() {
             self.current = self.current_plus_1;
-            if self.current_plus_2.is_some() {
-                self.current_plus_1 = self.current_plus_2;
-                self.current_plus_2 = None;
-            } else {
-                self.current_plus_1 = None;
-            }
+            self.current_plus_1 = None;
         } else {
             self.current = Self::fetch_next_char(&mut self.str_iter, &self.current);
         }
@@ -386,7 +656,13 @@ impl<'a> LexerIter<'a> {
         // Accept `current` "*" and load next char or EOF as `current`
         self.next_char();
         // Accept all block chars except the ending "*/" char sequence
-        while Self::is_block_comment_content(self.current, self.peek_1()) {
+        fn is_block_content(index1: Option<LexerIndex>, index2: Option<LexerIndex>) -> bool {
+            if index1.is_none() || index2.is_none() {
+                return false;
+            }
+            index1.unwrap().char != '*' || index2.unwrap().char != '/'
+        }
+        while is_block_content(self.current, self.peek_1()) {
             self.next_char();
         }
         if self.current.is_none() || self.current_plus_1.is_none() {
@@ -411,7 +687,34 @@ impl<'a> LexerIter<'a> {
      *   `current` is the next char (or EOF) after the close quote char '"'.
      */
     fn parse_double_quoted_str(&mut self) -> Result<Token<'a>, LexerError> {
-        panic!("Needs impl - parse double quoted string")
+        let start = self.current.unwrap();
+        // Accept beginning double quote
+        self.next_char();
+        // Accept remaining string content
+        fn is_str_content(index: Option<LexerIndex>) -> bool {
+            if index.is_none() {
+                return false;
+            }
+            index.unwrap().char != '"'
+        }
+        while is_str_content(self.current) {
+            let c = self.current().unwrap().char;
+            self.next_char();
+            // Accept escaped character
+            if c == '\\' {
+                self.next_char();
+            }
+        }
+        if self.current.is_none() {
+            return Err(LexerError {
+                message: STR_IS_MISSING_CLOSING_DOUBLE_QUOTE,
+                index: start,
+            });
+        }
+        let stop = self.current().unwrap();
+        // Ensure that we have met our post-condition
+        self.next_char();
+        Ok(self.make_token(start, stop, TokenType::Str))
     }
 
     /*
@@ -534,45 +837,10 @@ impl<'a> LexerIter<'a> {
     }
 
     /*
-     * Pre-condition:
-     *   'start' is the "0" char of the hex prefix.
-     *   `current` is the "x" or "X" of the hex prefix.
+     * Keyword and identifier facts:
+     *   - Keyword length is between 2 and 8, inclusively
+     *   - Keyword domain is a subdomain of identifiers
      *
-     * Post-condition:
-     *   `current` is EOF or a separator (whitespace or delimiter).
-     */
-    fn parse_hex_int(&mut self, start: LexerIndex) -> Result<Token<'a>, LexerError> {
-        if self.peek_1().is_none() || self.peek_2().is_none() {
-            return Err(LexerError {
-                message: INVALID_HEXADECIMAL_NUMBER,
-                index: start,
-            });
-        }
-        let p1 = self.current_plus_1.unwrap();
-        let p2 = self.current_plus_2.unwrap();
-        if !Self::is_hex_digit(p1.char) || !Self::is_hex_digit(p2.char) {
-            return Err(LexerError {
-                message: INVALID_HEXADECIMAL_NUMBER,
-                index: start,
-            });
-        }
-        // Make `p1` `current`
-        self.next_char();
-        // Make `p2` `current`
-        self.next_char();
-        // Accept `p2` and make the next char `current`
-        self.next_char();
-        // Ensure that our post-condition is an EOF or separator
-        if !Self::is_eof_or_separator(self.current) {
-            return Err(LexerError {
-                message: INVALID_FLOATING_POINT_NUMBER,
-                index: start,
-            });
-        }
-        Ok(self.make_token(start, p2, TokenType::Int))
-    }
-
-    /*
      * Pre-condition:
      *   `current` is the first char of a keyword or ident.
      *
@@ -580,7 +848,24 @@ impl<'a> LexerIter<'a> {
      *   `current` is EOF or separator (whitespace or delimiter)
      */
     fn parse_keyword_or_ident(&mut self) -> Result<Token<'a>, LexerError> {
-        panic!("Needs impl - parse keyword or ident")
+        let start = self.current.unwrap();
+        fn is_keyword_or_ident_content(index: Option<LexerIndex>) -> bool {
+            if index.is_none() {
+                return false;
+            }
+            LexerIter::is_keyword_or_ident_char(index.unwrap().char)
+        }
+        while is_keyword_or_ident_content(self.peek_1()) {
+            self.next_char();
+        }
+        let stop = self.current.unwrap();
+        // Ensure that we have met our post-condition
+        self.next_char();
+        if self.is_keyword(start.byte_index as usize, stop.byte_index as usize) {
+            Ok(self.make_token(start, stop, TokenType::Keyword))
+        } else {
+            Ok(self.make_token(start, stop, TokenType::Ident))
+        }
     }
 
     /*
@@ -596,7 +881,13 @@ impl<'a> LexerIter<'a> {
         // Accept `current` "/" and make second "/" the new `current`
         self.next_char();
         // Accept all line chars except newline or EOF
-        while Self::is_line_comment_content(self.peek_1()) {
+        fn is_line_content(index: Option<LexerIndex>) -> bool {
+            if index.is_none() {
+                return false;
+            }
+            index.unwrap().char != '\n'
+        }
+        while is_line_content(self.peek_1()) {
             self.next_char();
         }
         let stop = self.current.unwrap();
@@ -619,11 +910,31 @@ impl<'a> LexerIter<'a> {
             if p1 == 'x' || p1 == 'X' {
                 // Make "x" or "X"  `current`
                 self.next_char();
-                return self.parse_hex_int(start);
+                if self.peek_1().is_none() {
+                    return Err(LexerError {
+                        message: INVALID_HEXADECIMAL_NUMBER,
+                        index: start,
+                    });
+                }
+                // Accept first hex digit
+                self.next_char();
+                // Accept remaining hex characters
+                fn is_hex_content(index: Option<LexerIndex>) -> bool {
+                    if index.is_none() {
+                        return false;
+                    }
+                    let c = index.unwrap().char;
+                    c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
+                }
+                while is_hex_content(self.peek_1()) {
+                    self.next_char();
+                }
             }
-        }
-        while Self::is_some_digit(self.peek_1()) {
-            self.next_char(); // Make the next digit `current`
+        } else {
+            while Self::is_some_digit(self.peek_1()) {
+                // Make the next digit `current`
+                self.next_char();
+            }
         }
         // `current` is now the last digit of the whole number
         if Self::is_some_char(self.peek_1(), '.') {
@@ -638,41 +949,40 @@ impl<'a> LexerIter<'a> {
                     index: start,
                 });
             }
-            return self.parse_fractional_part(start);
-        }
-        if Self::is_eof_or_separator(self.peek_1()) {
-            let token_start = start.byte_index as usize;
-            let token_stop = self.current.unwrap().byte_index as usize + 1;
-            // Accept `current` if next char is a separator
-            if self.current_plus_1.is_some() {
-                self.next_char();
-            }
-            return Ok(Token {
-                value: &self.source[token_start..token_stop],
-                byte_index: start.byte_index,
-                token_type: TokenType::Int,
-            });
-        }
-        // We have a `current_plus_1` because we peeked successfully above
-        let possible_suffix = self.current_plus_1.unwrap();
-        let token_type = match possible_suffix.char {
-            'l' | 'L' => TokenType::Int,
-            'm' | 'M' => TokenType::Dec,
-            _ => {
-                return Err(LexerError {
-                    message: INTEGER_SUFFIX_MUST_BE_ONE_OF,
-                    index: start,
-                })
-            }
-        };
-        // Make suffix `current`
-        self.next_char();
-        // Accept suffix
-        self.next_char();
-        if Self::is_eof_or_separator(self.current) {
-            Ok(self.make_token(start, possible_suffix, token_type))
+            self.parse_fractional_part(start)
         } else {
-            Err(self.make_invalid_number_err(start, token_type))
+            if Self::is_eof_or_separator(self.peek_1()) {
+                let stop = self.current.unwrap();
+                let token = self.make_token(start, stop, TokenType::Int);
+                if self.current_plus_1.is_some() {
+                    self.next_char();
+                }
+                Ok(token)
+            } else {
+                // We have a possible suffix (not EOF or a separator).
+                // We have `current_plus_1` loaded because we peeked successfully above.
+                let possible_suffix = self.current_plus_1.unwrap();
+                let token_type = match possible_suffix.char {
+                    'l' | 'L' => TokenType::Int,
+                    'm' | 'M' => TokenType::Dec,
+                    _ => {
+                        return Err(LexerError {
+                            message: INTEGER_SUFFIX_MUST_BE_ONE_OF,
+                            index: start,
+                        })
+                    }
+                };
+                // Make suffix `current`
+                self.next_char();
+                // Accept suffix
+                self.next_char();
+                if Self::is_eof_or_separator(self.current) {
+                    Ok(self.make_token(start, possible_suffix, token_type))
+                } else {
+                    // Suffix is combined with another char
+                    Err(self.make_invalid_number_err(start, token_type))
+                }
+            }
         }
     }
 
@@ -684,7 +994,34 @@ impl<'a> LexerIter<'a> {
      *   `current` is the next char (or EOF) after the close quote char "`".
      */
     fn parse_quoted_ident(&mut self) -> Result<Token<'a>, LexerError> {
-        panic!("Needs impl - parse quoted ident")
+        let start = self.current.unwrap();
+        // Accept beginning backtick
+        self.next_char();
+        // Accept remaining ident content
+        fn is_ident_content(index: Option<LexerIndex>) -> bool {
+            if index.is_none() {
+                return false;
+            }
+            index.unwrap().char != '`'
+        }
+        while is_ident_content(self.current) {
+            let c = self.current().unwrap().char;
+            self.next_char();
+            // Accept escaped character
+            if c == '\\' {
+                self.next_char();
+            }
+        }
+        if self.current.is_none() {
+            return Err(LexerError {
+                message: IDENT_IS_MISSING_CLOSING_BACKTICK,
+                index: start,
+            });
+        }
+        let stop = self.current().unwrap();
+        // Ensure that we have met our post-condition
+        self.next_char();
+        Ok(self.make_token(start, stop, TokenType::Ident))
     }
 
     /*
@@ -695,7 +1032,34 @@ impl<'a> LexerIter<'a> {
      *   `current` is the next char (or EOF) after the close quote char "'".
      */
     fn parse_single_quoted_str(&mut self) -> Result<Token<'a>, LexerError> {
-        panic!("Needs impl - parse single quoted string")
+        let start = self.current.unwrap();
+        // Accept beginning single quote
+        self.next_char();
+        // Accept remaining string content
+        fn is_str_content(index: Option<LexerIndex>) -> bool {
+            if index.is_none() {
+                return false;
+            }
+            index.unwrap().char != '\''
+        }
+        while is_str_content(self.current) {
+            let c = self.current().unwrap().char;
+            self.next_char();
+            // Accept escaped character
+            if c == '\\' {
+                self.next_char();
+            }
+        }
+        if self.current.is_none() {
+            return Err(LexerError {
+                message: STR_IS_MISSING_CLOSING_SINGLE_QUOTE,
+                index: start,
+            });
+        }
+        let stop = self.current().unwrap();
+        // Ensure that we have met our post-condition
+        self.next_char();
+        Ok(self.make_token(start, stop, TokenType::Str))
     }
 
     /*
@@ -725,14 +1089,16 @@ impl<'a> LexerIter<'a> {
             }
             // Is this a two char symbol?
             let second_chars: [u8; 2] = TWO_CHAR_SYMBOLS[index];
-            if second_index.char == second_chars[0] as char {
-                // Accept second char and make `current` first char following the symbol
-                self.next_char();
-                return Ok(self.make_token(first_index, second_index, TokenType::TwoCharSym));
-            } else if second_index.char == second_chars[1] as char {
-                // Accept second char and make `current` first char following the symbol
-                self.next_char();
-                return Ok(self.make_token(first_index, second_index, TokenType::TwoCharSym));
+            if second_chars[0] != b' ' {
+                if second_index.char == second_chars[0] as char {
+                    // Accept second char and make `current` first char following the symbol
+                    self.next_char();
+                    return Ok(self.make_token(first_index, second_index, TokenType::TwoCharSym));
+                } else if second_chars[1] != b' ' && second_index.char == second_chars[1] as char {
+                    // Accept second char and make `current` first char following the symbol
+                    self.next_char();
+                    return Ok(self.make_token(first_index, second_index, TokenType::TwoCharSym));
+                }
             }
         }
         // We are definitely a one char symbol
@@ -746,464 +1112,9 @@ impl<'a> LexerIter<'a> {
         self.current_plus_1
     }
 
-    fn peek_2(&mut self) -> Option<LexerIndex> {
-        if self.current_plus_1.is_none() {
-            self.current_plus_1 = Self::fetch_next_char(&mut self.str_iter, &self.current);
-            self.current_plus_2 = Self::fetch_next_char(&mut self.str_iter, &self.current_plus_1);
-        } else if self.current_plus_2.is_none() {
-            self.current_plus_2 = Self::fetch_next_char(&mut self.str_iter, &self.current_plus_1);
-        }
-        self.current_plus_2
-    }
-
     fn skip_whitespace(&mut self) {
         while self.current.is_some() && Self::is_whitespace(self.current.unwrap().char) {
             self.next_char();
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn assert_parse_eq(source: &str) {
-        let mut lexer_iter = LexerIter::new(source);
-        let next_token = lexer_iter.next();
-        assert_eq!(true, next_token.is_ok());
-        assert_eq!(source, next_token.unwrap().value);
-        let next_token = lexer_iter.next();
-        assert_eq!(true, next_token.is_ok());
-        assert_eq!(EOF_TOKEN, next_token.unwrap());
-    }
-
-    #[test]
-    fn test_adjacent_one_char_symbols() {
-        let source = "!#%()*+,-./:;<>@[]{}~=";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("!", lexer_iter.next().unwrap().value);
-        assert_eq!("#", lexer_iter.next().unwrap().value);
-        assert_eq!("%", lexer_iter.next().unwrap().value);
-        assert_eq!("(", lexer_iter.next().unwrap().value);
-        assert_eq!(")", lexer_iter.next().unwrap().value);
-        assert_eq!("*", lexer_iter.next().unwrap().value);
-        assert_eq!("+", lexer_iter.next().unwrap().value);
-        assert_eq!(",", lexer_iter.next().unwrap().value);
-        assert_eq!("-", lexer_iter.next().unwrap().value);
-        assert_eq!(".", lexer_iter.next().unwrap().value);
-        assert_eq!("/", lexer_iter.next().unwrap().value);
-        assert_eq!(":", lexer_iter.next().unwrap().value);
-        assert_eq!(";", lexer_iter.next().unwrap().value);
-        assert_eq!("<", lexer_iter.next().unwrap().value);
-        assert_eq!(">", lexer_iter.next().unwrap().value);
-        assert_eq!("@", lexer_iter.next().unwrap().value);
-        assert_eq!("[", lexer_iter.next().unwrap().value);
-        assert_eq!("]", lexer_iter.next().unwrap().value);
-        assert_eq!("{", lexer_iter.next().unwrap().value);
-        assert_eq!("}", lexer_iter.next().unwrap().value);
-        assert_eq!("~", lexer_iter.next().unwrap().value);
-        assert_eq!("=", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_adjacent_two_char_symbols() {
-        let source = "==!=<=>=&&->||:=::<:>:";
-        let mut lexer_iter = LexerIter::new(source);
-        // There are 11 two char symbols:
-        // [b'=', b' '], //  0: !=
-        // [b'&', b' '], //  4: &&
-        // [b'>', b' '], // 11: ->
-        // [b'=', b':'], // 14: :=, ::
-        // [b'=', b':'], // 16: <=, <:
-        // [b'=', b':'], // 17: ==
-        // [b'=', b':'], // 18: >=, >:
-        // [b'|', b' '], // 24: ||
-        assert_eq!("==", lexer_iter.next().unwrap().value);
-        assert_eq!("!=", lexer_iter.next().unwrap().value);
-        assert_eq!("<=", lexer_iter.next().unwrap().value);
-        assert_eq!(">=", lexer_iter.next().unwrap().value);
-        assert_eq!("&&", lexer_iter.next().unwrap().value);
-        assert_eq!("->", lexer_iter.next().unwrap().value);
-        assert_eq!("||", lexer_iter.next().unwrap().value);
-        assert_eq!(":=", lexer_iter.next().unwrap().value);
-        assert_eq!("::", lexer_iter.next().unwrap().value);
-        assert_eq!("<:", lexer_iter.next().unwrap().value);
-        assert_eq!(">:", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_block_comment() {
-        let source = "/**/";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("/**/", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "/*\n*/";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("/*\n*/", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "/*a*/";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("/*a*/", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "/*\na*/";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("/*\na*/", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "/*a\n*/";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("/*a\n*/", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "1/*a\n*/";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("1", lexer_iter.next().unwrap().value);
-        assert_eq!("/*a\n*/", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_delimiters() {
-        // All 27 delimiters:
-        assert_eq!(true, LexerIter::is_delimiter('!'));
-        assert_eq!(true, LexerIter::is_delimiter('"'));
-        assert_eq!(true, LexerIter::is_delimiter('#'));
-        assert_eq!(true, LexerIter::is_delimiter('%'));
-        assert_eq!(true, LexerIter::is_delimiter('&'));
-        assert_eq!(true, LexerIter::is_delimiter('\''));
-        assert_eq!(true, LexerIter::is_delimiter('('));
-        assert_eq!(true, LexerIter::is_delimiter(')'));
-        assert_eq!(true, LexerIter::is_delimiter('*'));
-        assert_eq!(true, LexerIter::is_delimiter('+'));
-        assert_eq!(true, LexerIter::is_delimiter(','));
-        assert_eq!(true, LexerIter::is_delimiter('-'));
-        assert_eq!(true, LexerIter::is_delimiter('.'));
-        assert_eq!(true, LexerIter::is_delimiter('/'));
-        assert_eq!(true, LexerIter::is_delimiter(':'));
-        assert_eq!(true, LexerIter::is_delimiter(';'));
-        assert_eq!(true, LexerIter::is_delimiter('<'));
-        assert_eq!(true, LexerIter::is_delimiter('='));
-        assert_eq!(true, LexerIter::is_delimiter('>'));
-        assert_eq!(true, LexerIter::is_delimiter('@'));
-        assert_eq!(true, LexerIter::is_delimiter('['));
-        assert_eq!(true, LexerIter::is_delimiter(']'));
-        assert_eq!(true, LexerIter::is_delimiter('`'));
-        assert_eq!(true, LexerIter::is_delimiter('{'));
-        assert_eq!(true, LexerIter::is_delimiter('|'));
-        assert_eq!(true, LexerIter::is_delimiter('}'));
-        assert_eq!(true, LexerIter::is_delimiter('~'));
-        // Not a delimiter
-        assert_eq!(false, LexerIter::is_delimiter('?'));
-        assert_eq!(false, LexerIter::is_delimiter('^'));
-    }
-
-    #[test]
-    fn test_hex_int_with_small_x() {
-        let source = "0xAE";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("0xAE", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Int, n.token_type);
-    }
-
-    #[test]
-    fn test_hex_int_with_large_x() {
-        let source = "0Xae";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("0Xae", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Int, n.token_type);
-    }
-
-    #[test]
-    fn test_iter_chars() {
-        let crab = '🦀';
-        assert_eq!(4, crab.len_utf8());
-        let source = "1+🦀+2";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!(true, lexer_iter.current.is_some());
-        assert_eq!('1', lexer_iter.current.unwrap().char);
-        assert_eq!(0, lexer_iter.current.unwrap().byte_index);
-        assert_eq!(0, lexer_iter.current.unwrap().char_index);
-        lexer_iter.next_char();
-        assert_eq!('+', lexer_iter.current.unwrap().char);
-        assert_eq!(1, lexer_iter.current.unwrap().byte_index);
-        assert_eq!(1, lexer_iter.current.unwrap().char_index);
-        lexer_iter.next_char();
-        assert_eq!('🦀', lexer_iter.current.unwrap().char);
-        assert_eq!(2, lexer_iter.current.unwrap().byte_index);
-        assert_eq!(2, lexer_iter.current.unwrap().char_index);
-        lexer_iter.next_char();
-        assert_eq!('+', lexer_iter.current.unwrap().char);
-        assert_eq!(6, lexer_iter.current.unwrap().byte_index);
-        assert_eq!(3, lexer_iter.current.unwrap().char_index);
-        lexer_iter.next_char();
-        assert_eq!('2', lexer_iter.current.unwrap().char);
-        assert_eq!(7, lexer_iter.current.unwrap().byte_index);
-        assert_eq!(4, lexer_iter.current.unwrap().char_index);
-        lexer_iter.next_char();
-        assert_eq!(true, lexer_iter.current.is_none());
-    }
-
-    #[test]
-    fn test_line_comment() {
-        let source = "//";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("//", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "// ";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("// ", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "//a";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("//a", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "//\n//";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("//", lexer_iter.next().unwrap().value);
-        assert_eq!("//", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "// \n//";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("// ", lexer_iter.next().unwrap().value);
-        assert_eq!("//", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "//a";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("//a", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-        let source = "//a\n//";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("//a", lexer_iter.next().unwrap().value);
-        assert_eq!("//", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_multi_digit_int() {
-        let source = "23";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("23", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Int, n.token_type);
-    }
-
-    #[test]
-    fn test_one_char_symbols() {
-        // Note that the following symbols will fail because they are used for quoting:
-        //     assert_single_token_parse("\"");
-        //     assert_single_token_parse("'");
-        //     assert_single_token_parse("`");
-        // Remaining 23 delimiters are single char symbols:
-        assert_parse_eq("!");
-        assert_parse_eq("#");
-        assert_parse_eq("%");
-        assert_parse_eq("(");
-        assert_parse_eq(")");
-        assert_parse_eq("*");
-        assert_parse_eq("+");
-        assert_parse_eq(",");
-        assert_parse_eq("-");
-        assert_parse_eq(".");
-        assert_parse_eq("/");
-        assert_parse_eq(":");
-        assert_parse_eq(";");
-        assert_parse_eq("<");
-        assert_parse_eq("=");
-        assert_parse_eq(">");
-        assert_parse_eq("@");
-        assert_parse_eq("[");
-        assert_parse_eq("]");
-        assert_parse_eq("{");
-        assert_parse_eq("|");
-        assert_parse_eq("}");
-        assert_parse_eq("~");
-    }
-
-    #[test]
-    fn test_real() {
-        let source = "23.1";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("23.1", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Flt, n.token_type);
-    }
-
-    #[test]
-    fn test_real_division() {
-        let source = "23.1/13.2";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("23.1", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Flt, n.token_type);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("/", n.value);
-        assert_eq!(4, n.byte_index);
-        assert_eq!(TokenType::OneCharSym, n.token_type);
-    }
-
-    #[test]
-    fn test_real_division_with_exponents() {
-        let source = "231.0e-1/132.0e-1";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("231.0e-1", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Flt, n.token_type);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("/", n.value);
-        assert_eq!(8, n.byte_index);
-        assert_eq!(TokenType::OneCharSym, n.token_type);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("132.0e-1", n.value);
-        assert_eq!(9, n.byte_index);
-        assert_eq!(TokenType::Flt, n.token_type);
-    }
-
-    #[test]
-    fn test_real_with_one_digit_exponent() {
-        let source = "1.0e-1";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("1.0e-1", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Flt, n.token_type);
-    }
-
-    #[test]
-    fn test_real_with_two_digit_exponent() {
-        let source = "1.0e+12";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("1.0e+12", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Flt, n.token_type);
-    }
-
-    #[test]
-    fn test_real_with_invalid_suffix_error() {
-        let source = "23.0x";
-        let mut lexer_iter = LexerIter::new(source);
-        let r = lexer_iter.next();
-        if r.is_ok() {
-            panic!("Error expected");
-        }
-        assert_eq!(
-            FLOATING_POINT_SUFFIX_MUST_BE_ONE_OF,
-            r.err().unwrap().message
-        );
-    }
-
-    #[test]
-    fn test_real_with_trailing_period_error() {
-        let source = "23.";
-        let mut lexer_iter = LexerIter::new(source);
-        let r = lexer_iter.next();
-        if r.is_ok() {
-            panic!("Error expected");
-        }
-        assert_eq!(INVALID_FLOATING_POINT_NUMBER, r.err().unwrap().message);
-    }
-
-    #[test]
-    fn test_real_with_trailing_suffix_error() {
-        let source = "23.f";
-        let mut lexer_iter = LexerIter::new(source);
-        let r = lexer_iter.next();
-        if r.is_ok() {
-            panic!("Error expected");
-        }
-        assert_eq!(INVALID_FLOATING_POINT_NUMBER, r.err().unwrap().message);
-    }
-
-    #[test]
-    fn test_single_digit_int() {
-        let source = "1";
-        let mut lexer_iter = LexerIter::new(source);
-        let n = lexer_iter.next().unwrap();
-        assert_eq!("1", n.value);
-        assert_eq!(0, n.byte_index);
-        assert_eq!(TokenType::Int, n.token_type);
-    }
-
-    #[test]
-    fn test_three_char_symbols() {
-        assert_parse_eq("...");
-    }
-
-    #[test]
-    fn test_three_equals() {
-        let source = "===";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("==", lexer_iter.next().unwrap().value);
-        assert_eq!("=", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_two_char_symbols() {
-        // There are 11 two char symbols:
-        // [b'=', b' '], //  0: !=
-        // [b'&', b' '], //  4: &&
-        // [b'>', b' '], // 11: ->
-        // [b'=', b':'], // 14: :=, ::
-        // [b'=', b':'], // 16: <=, <:
-        // [b'=', b':'], // 17: ==
-        // [b'=', b':'], // 18: >=, >:
-        // [b'|', b' '], // 24: ||
-        assert_parse_eq("!=");
-        assert_parse_eq("&&");
-        assert_parse_eq("->");
-        assert_parse_eq(":=");
-        assert_parse_eq("::");
-        assert_parse_eq("<=");
-        assert_parse_eq("<:");
-        assert_parse_eq("==");
-        assert_parse_eq(">=");
-        assert_parse_eq(">:");
-        assert_parse_eq("||");
-    }
-
-    #[test]
-    fn test_two_periods() {
-        let source = "..";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!(".", lexer_iter.next().unwrap().value);
-        assert_eq!(".", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_two_subtracts() {
-        let source = "--";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("-", lexer_iter.next().unwrap().value);
-        assert_eq!("-", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_four_periods() {
-        let source = "....";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("...", lexer_iter.next().unwrap().value);
-        assert_eq!(".", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
-    }
-
-    #[test]
-    fn test_five_periods() {
-        let source = ".....";
-        let mut lexer_iter = LexerIter::new(source);
-        assert_eq!("...", lexer_iter.next().unwrap().value);
-        assert_eq!(".", lexer_iter.next().unwrap().value);
-        assert_eq!(".", lexer_iter.next().unwrap().value);
-        assert_eq!(EOF_TOKEN, lexer_iter.next().unwrap());
     }
 }
